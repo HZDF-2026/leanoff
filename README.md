@@ -83,6 +83,31 @@ readable summary.
 - Standalone single-file module against an external Mathlib (`--lean-path`).
 - A synthetic core-only two-module project exercising the `build` olean chain.
 
+## Formal verification
+
+The scheduling core of `leanoff build` — the `topo_levels` algorithm that groups modules
+into dependency levels for parallel compilation — is machine-checked in Lean 4
+([proofs/TopoLevels.lean](proofs/TopoLevels.lean), against Mathlib):
+
+| Theorem | Guarantees |
+|---|---|
+| `levels_cover` | every module is placed in some level (nothing silently skipped) |
+| `levels_level_subset` | levels only contain project modules |
+| `levels_disjoint` | no module is scheduled twice |
+| `levels_deps_earlier` | every dependency sits in strictly earlier levels — level-by-level compilation is sound |
+| `levels_same_level_indep` | no intra-level dependencies — parallel compilation of a level is safe |
+| `levels_none_cycle` | the "import cycle among …" exit is never spurious: `none` certifies a real cycle |
+| `levels_exists_of_acyclic` | acyclic imports always levelize: `build` never gets stuck on valid graphs |
+
+Reproduce with any Lean 4.32.2 toolchain and a local Mathlib checkout:
+
+```bash
+powershell -ExecutionPolicy Bypass -File proofs/verify_proofs.ps1
+# overridable: $env:LEAN_BIN, $env:MATHLIB
+```
+
+No `sorry`, no `admit`, no new axioms beyond `Classical.choice`.
+
 ## Roadmap
 
 - [ ] `lean-toolchain` / elan toolchain auto-discovery
