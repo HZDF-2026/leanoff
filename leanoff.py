@@ -27,7 +27,7 @@ import re
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -180,11 +180,11 @@ def run_lean(lean_exe, root, mod, lean_path, out_olean, cwd_root) -> Result:
         timeout=3600,
     )
     seconds = time.monotonic() - t0
-    out = proc.stdout.decode("utf-8", errors="replace")
-    errors = sum(1 for l in out.splitlines() if ERROR_RE.search(l))
-    warnings = sum(1 for l in out.splitlines() if WARNING_RE.search(l))
-    sorries = sum(1 for l in out.splitlines() if SORRY_RE.search(l))
-    first = next((l for l in out.splitlines() if ERROR_RE.search(l)), "")
+    lines = proc.stdout.decode("utf-8", errors="replace").splitlines()
+    errors = sum(1 for l in lines if ERROR_RE.search(l))
+    warnings = sum(1 for l in lines if WARNING_RE.search(l))
+    sorries = sum(1 for l in lines if SORRY_RE.search(l))
+    first = next((l for l in lines if ERROR_RE.search(l)), "")
     return Result(mod.name, proc.returncode == 0, errors, warnings, sorries, seconds, first)
 
 
@@ -238,10 +238,24 @@ def cmd_verify(args) -> int:
     with ThreadPoolExecutor(max_workers=args.jobs) as ex:
         futs = {ex.submit(run_lean, lean_exe, root, m, lean_path, None, True): m for m in mods}
         for f in as_completed(futs):
-            r = f.result()
+            r = _collect(f, futs)
+            if r is None:
+                continue
             r.ok = classify(r, args.allow_sorry)
             results.append(r)
     return report(results, time.monotonic() - t0, args)
+
+
+def _collect(f, futs) -> Result | None:
+    """Result of one lean run; a killed/timed-out lean becomes a FAIL result,
+    a cancelled future (build failure elsewhere) is skipped."""
+    try:
+        return f.result()
+    except CancelledError:
+        return None
+    except Exception as e:
+        m = futs[f]
+        return Result(m.name, False, 1, 0, 0, 0.0, f"leanoff: lean died: {type(e).__name__}: {e}")
 
 
 def cmd_build(args) -> int:
@@ -260,6 +274,7 @@ def cmd_build(args) -> int:
     t0 = time.monotonic()
     results = []
     for level in topo_levels(mods):
+        failed = False
         with ThreadPoolExecutor(max_workers=args.jobs) as ex:
             futs = {}
             for m in level:
@@ -268,13 +283,24 @@ def cmd_build(args) -> int:
                 olean.parent.mkdir(parents=True, exist_ok=True)
                 futs[ex.submit(run_lean, lean_exe, root, m, lean_path, str(olean), True)] = m
             for f in as_completed(futs):
-                r = f.result()
+                r = _collect(f, futs)
+                if r is None:
+                    continue
                 r.ok = classify(r, args.allow_sorry)
                 results.append(r)
                 if not r.ok:
-                    for m in level:
-                        ex.shutdown(wait=False, cancel_futures=True)
-                        break
+                    # a level that failed leaves modules below it without their
+                    # oleans; elaborating them would only cascade spurious
+                    # errors, so cancel the rest and stop the build.
+                    # NB: cancel the futures, NOT ex.shutdown(): calling
+                    # shutdown from inside the as_completed loop deadlocks
+                    # (verified reproducible on 3.12); the with-block performs
+                    # the final shutdown after the loop drains.
+                    failed = True
+                    for fu in futs:
+                        fu.cancel()
+        if failed:
+            break
     return report(results, time.monotonic() - t0, args)
 
 

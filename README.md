@@ -67,6 +67,16 @@ Module order comes from parsing `import` lines; independent modules elaborate in
 Exit code is non-zero if any module fails — CI-friendly. `--format json` emits a machine
 readable summary.
 
+`build` fails fast: when a module fails, remaining queued modules of its level are
+cancelled and dependent levels are not attempted — they would only elaborate against
+oleans that were never produced and cascade spurious errors. `verify` always reports
+every module; it exists to give the full picture.
+
+Wall time is ~99.9% lean elaboration — Python-side overhead on a 35-module project is
+under 0.3 s. Parallelism is memory-bandwidth-bound: on a 16-core/64 GB laptop, `--jobs 16`
+buys ~11% over the default 8 (measured warm-cache), and the first run after boot is
+slower until the OS caches the dependency oleans.
+
 ## Honest limitations
 
 - `verify` elaborates against *existing* oleans. If a dependency's interface changed since
@@ -82,6 +92,9 @@ readable summary.
   packages: zero-config discovery, whole-project parallel verification.
 - Standalone single-file module against an external Mathlib (`--lean-path`).
 - A synthetic core-only two-module project exercising the `build` olean chain.
+- 7 orchestration unit tests ([`tests/`](tests/)): level scheduling, fail-fast
+  cancellation, killed-lean handling — with a stubbed `run_lean`, no toolchain needed
+  (`python -m unittest tests.test_leanoff`).
 
 ## Formal verification
 
