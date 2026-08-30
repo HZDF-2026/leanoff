@@ -1,0 +1,6 @@
+.leanoff/
+__pycache__/
+*.pyc
+*.olean
+*.ilean
+*.trace

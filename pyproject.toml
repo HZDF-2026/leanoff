@@ -1,0 +1,21 @@
+[project]
+name = "leanoff"
+version = "0.1.0"
+description = "Offline verification and minimal builds for Lean 4 projects: no git, no network, no lake."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Shijing Ge" }]
+keywords = ["lean4", "lean", "verification", "offline", "lake"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.scripts]
+leanoff = "leanoff:main"
+
+[tool.setuptools]
+py-modules = ["leanoff"]
