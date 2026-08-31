@@ -35,6 +35,28 @@ python leanoff.py build --root .
 python leanoff.py verify --root . --lean-path /path/to/mathlib/.lake/build/lib/lean
 ```
 
+Prefer a single static binary with no Python runtime? The Go port is
+drop-in compatible:
+
+```bash
+go build -o leanoff ./cmd/leanoff          # or: python scripts/build_matrix.py
+./leanoff verify --root . --lean path/to/lean-toolchain/bin
+```
+
+## Implementations
+
+Two ports, same behavior:
+
+| Port | Use it when | Location |
+|---|---|---|
+| Python (reference) | everywhere; zero dependencies, stdlib only | `leanoff.py` |
+| Go | single static binary, air-gapped boxes without Python | `cmd/leanoff`, `internal/leanoff` |
+
+Both produce byte-identical reports (modulo timing fields); `tests/diff_go.py`
+runs both against the same project with a stub `lean` and asserts the match.
+`python scripts/build_matrix.py` cross-compiles the Go port for
+windows/linux/darwin × amd64/arm64/arm/386 into `dist/go/`.
+
 `verify` elaborates each module against the oleans already on disk; `build` additionally
 emits project oleans in topological order (default `<root>/.leanoff/olean`, which `verify`
 then picks up automatically).
@@ -95,6 +117,8 @@ slower until the OS caches the dependency oleans.
 - 7 orchestration unit tests ([`tests/`](tests/)): level scheduling, fail-fast
   cancellation, killed-lean handling — with a stubbed `run_lean`, no toolchain needed
   (`python -m unittest tests.test_leanoff`).
+- The Go port: `go test ./...` (28 tests incl. race detector), plus
+  `tests/diff_go.py` differential runs against the Python reference.
 
 ## Formal verification
 
