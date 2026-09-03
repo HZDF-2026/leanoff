@@ -5,3 +5,4 @@ __pycache__/
 *.ilean
 *.trace
 dist/
+cpp/build/

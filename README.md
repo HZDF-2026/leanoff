@@ -35,25 +35,31 @@ python leanoff.py build --root .
 python leanoff.py verify --root . --lean-path /path/to/mathlib/.lake/build/lib/lean
 ```
 
-Prefer a single static binary with no Python runtime? The Go port is
+Prefer a single static binary with no Python runtime? The Go and C++ ports are
 drop-in compatible:
 
 ```bash
-go build -o leanoff ./cmd/leanoff          # or: python scripts/build_matrix.py
+go build -o leanoff ./cmd/leanoff          # Go: or python scripts/build_matrix.py
 ./leanoff verify --root . --lean path/to/lean-toolchain/bin
+
+make -C cpp                                # C++17: -> dist/cpp/leanoff
+./dist/cpp/leanoff verify --root . --lean path/to/lean-toolchain/bin
 ```
 
 ## Implementations
 
-Two ports, same behavior:
+Three ports, same behavior:
 
 | Port | Use it when | Location |
 |---|---|---|
 | Python (reference) | everywhere; zero dependencies, stdlib only | `leanoff.py` |
 | Go | single static binary, air-gapped boxes without Python | `cmd/leanoff`, `internal/leanoff` |
+| C++17 | small binary, no runtime, battle-tested toolchains | `cpp/` |
 
-Both produce byte-identical reports (modulo timing fields); `tests/diff_go.py`
-runs both against the same project with a stub `lean` and asserts the match.
+All produce byte-identical reports (modulo timing fields): `tests/diff_go.py`
+and `tests/diff_cpp.py` run the ports against the same project with a stub
+`lean` and assert the match. The C++ port additionally pins the pure functions
+and the scheduling layer against frozen reference values (`make -C cpp test`).
 `python scripts/build_matrix.py` cross-compiles the Go port for
 windows/linux/darwin × amd64/arm64/arm/386 into `dist/go/`.
 
@@ -119,6 +125,10 @@ slower until the OS caches the dependency oleans.
   (`python -m unittest tests.test_leanoff`).
 - The Go port: `go test ./...` (28 tests incl. race detector), plus
   `tests/diff_go.py` differential runs against the Python reference.
+- The C++ port: `make -C cpp test` (163 golden-table checks over the pycompat
+  layer, report rendering, scheduling, and the argparse surface), plus
+  `tests/diff_cpp.py` — 61 CLI cases and 4 end-to-end runs against the Python
+  reference.
 
 ## Formal verification
 
