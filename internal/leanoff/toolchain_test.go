@@ -28,10 +28,13 @@ func TestFindToolchainFromBinDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filepath.Clean(gotExe) != filepath.Clean(exe) {
-		t.Fatalf("exe = %q, want %q", gotExe, exe)
+	// FindToolchain resolves symlinks (and Windows 8.3 names) like Python's
+	// Path.resolve, so the expectations must go through the same resolution.
+	wantExe := pyResolve(exe)
+	if filepath.Clean(gotExe) != filepath.Clean(wantExe) {
+		t.Fatalf("exe = %q, want %q", gotExe, wantExe)
 	}
-	wantLib := filepath.Join(filepath.Dir(bin), "lib", "lean")
+	wantLib := filepath.Join(filepath.Dir(filepath.Dir(wantExe)), "lib", "lean")
 	if filepath.Clean(lib) != filepath.Clean(wantLib) {
 		t.Fatalf("lib = %q, want %q", lib, wantLib)
 	}
@@ -85,11 +88,14 @@ func TestLeanPathComponents(t *testing.T) {
 		t.Fatal(err)
 	}
 	comps := LeanPathComponents(tmp, filepath.Join(tmp, "lake-manifest.json"), nil)
+	// LeanPathComponents resolves symlinks like Python's Path.resolve, so the
+	// expectations must be built from the resolved temp dir.
+	rt := pyResolve(tmp)
 	want := []string{
-		filepath.Join(tmp, ".leanoff", "olean"),
-		filepath.Join(tmp, ".lake", "build", "lib", "lean"),
-		filepath.Join(tmp, "local", "pathpkg", ".lake", "build", "lib", "lean"),
-		filepath.Join(tmp, "pkgs", "Mathlib", ".lake", "build", "lib", "lean"),
+		filepath.Join(rt, ".leanoff", "olean"),
+		filepath.Join(rt, ".lake", "build", "lib", "lean"),
+		filepath.Join(rt, "local", "pathpkg", ".lake", "build", "lib", "lean"),
+		filepath.Join(rt, "pkgs", "Mathlib", ".lake", "build", "lib", "lean"),
 	}
 	if len(comps) != len(want) {
 		t.Fatalf("comps = %v, want %v", comps, want)
@@ -108,8 +114,9 @@ func TestLeanPathComponentsExtrasFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 	comps := LeanPathComponents(tmp, "", []string{extra})
-	if len(comps) != 1 || comps[0] != extra {
-		t.Fatalf("comps = %v, want [%s]", comps, extra)
+	want := pyResolve(extra)
+	if len(comps) != 1 || comps[0] != want {
+		t.Fatalf("comps = %v, want [%s]", comps, want)
 	}
 }
 

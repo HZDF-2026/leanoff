@@ -29,7 +29,10 @@ def make_args(root, jobs=1):
 def setup_project(files):
     tmp = Path(tempfile.mkdtemp())
     (tmp / "bin").mkdir()
+    # find_toolchain resolves "lean" on POSIX and "lean.exe" on Windows —
+    # create both so the stubbed orchestration tests run everywhere.
     (tmp / "bin" / "lean.exe").touch()
+    (tmp / "bin" / "lean").touch()
     for name, text in files.items():
         f = tmp / name
         f.parent.mkdir(parents=True, exist_ok=True)
