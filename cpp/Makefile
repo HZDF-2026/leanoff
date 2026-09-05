@@ -6,7 +6,9 @@
 #
 # Directory commands are shell-guarded because mingw32-make without a POSIX
 # shell cannot exec `mkdir`/`rm` directly; `cmd /c` is a real executable, so it
-# works through CreateProcess as well as through any sh.
+# works through CreateProcess as well as through any sh. Backslash path
+# rewriting is Windows-only: on POSIX a literal `..\dist\cpp` is one oddly
+# named directory and the link step dies on a missing output path.
 
 CXX ?= g++
 CXXSTD ?= -std=c++17
@@ -27,9 +29,11 @@ TEST_BIN := $(BUILD)/test_refdata$(if $(filter $(OS),Windows_NT),.exe,)
 ifeq ($(OS),Windows_NT)
 MD := cmd /d /c md
 RMRF := cmd /d /c rmdir /s /q
+FIXPATH = $(subst /,\,$1)
 else
 MD := mkdir -p
 RMRF := rm -rf
+FIXPATH = $1
 endif
 
 .PHONY: all test clean
@@ -40,7 +44,7 @@ $(BIN): $(OBJS) | $(DIST)
 	$(CXX) $(CXXSTD) $(WARN) -o $@ $^
 
 $(DIST) $(BUILD):
-	-$(MD) $(subst /,\,$@)
+	-$(MD) $(call FIXPATH,$@)
 
 $(BUILD)/%.o: %.cpp | $(BUILD)
 	$(CXX) $(CXXSTD) $(WARN) -c -o $@ $<
@@ -52,5 +56,5 @@ $(TEST_BIN): test_refdata.cpp $(LIB_OBJS) | $(BUILD)
 	$(CXX) $(CXXSTD) $(WARN) -o $@ $^
 
 clean:
-	-$(RMRF) $(subst /,\,$(BUILD))
-	-$(RMRF) $(subst /,\,$(DIST))
+	-$(RMRF) $(call FIXPATH,$(BUILD))
+	-$(RMRF) $(call FIXPATH,$(DIST))
