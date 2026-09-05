@@ -22,6 +22,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <utility>
+#ifdef __APPLE__
+#include <crt_externs.h>
+static char** envpEnviron() { return *_NSGetEnviron(); }
+#else
+extern "C" char** environ;
+static char** envpEnviron() { return environ; }
+#endif
 #endif
 
 namespace leanoff {
@@ -193,7 +200,7 @@ ProcOutcome runProcess(const std::string& exe, const std::vector<std::string>& a
 
     // envp: current environment with LEAN_PATH replaced.
     std::vector<std::string> envStore;
-    for (char** e = environ; e && *e; e++) {
+    for (char** e = envpEnviron(); e && *e; e++) {
         if (strncmp(*e, "LEAN_PATH=", 10) == 0) continue;
         envStore.emplace_back(*e);
     }
