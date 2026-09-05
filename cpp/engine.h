@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "runlean.h"
+#include <stdexcept>
 
 namespace leanoff {
 

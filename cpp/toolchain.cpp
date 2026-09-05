@@ -19,6 +19,8 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+#include <utility>
+#include <cstdint>
 #endif
 
 namespace leanoff {

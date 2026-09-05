@@ -29,6 +29,8 @@
 #include "module.h"
 #include "pycompat.h"
 #include "runlean.h"
+#include <cfloat>
+#include <utility>
 
 using namespace leanoff;
 

@@ -19,6 +19,7 @@
 #include "pycompat.h"
 #include "runlean.h"
 #include "toolchain.h"
+#include <cstdio>
 
 namespace leanoff {
 

@@ -12,6 +12,8 @@
 
 #include "pycompat.h"
 #include "pyre.h"
+#include <utility>
+#include <cstdint>
 
 namespace leanoff {
 namespace {

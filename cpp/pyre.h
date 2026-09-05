@@ -1,4 +1,4 @@
-﻿// pyre.h — a small backtracking regex engine reproducing CPython `re` semantics.
+// pyre.h — a small backtracking regex engine reproducing CPython `re` semantics.
 #ifndef leanoff_PYRE_H
 #define leanoff_PYRE_H
 
@@ -7,6 +7,8 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <stdexcept>
+#include <utility>
 
 namespace leanoff {
 
